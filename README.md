@@ -6,6 +6,10 @@ Exporter from Poser to Panda3d egg format.
 
 Based on original code of user [satori](http://www.panda3d.org/forums/profile.php?mode=viewprofile&u=3839 "Satori") at Panda3d.org forum.
 
+Running
+--------
+Run this script inside the Poser in the PoserPython via File/Run script
+
 Supported features
 --------
 * Exporting mesh 
