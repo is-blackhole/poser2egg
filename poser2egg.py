@@ -18,16 +18,18 @@
 ############################################################
 import poser
 import os
+import string
 
 V4_RELATIVE_TEXTURE_PATH = False
 ############################################################
 # General Functions
 ############################################################
 
-# from chicken
+
+# some code from chicken exporter
 def egg_safe_same(s):
     """Function that converts names into something suitable for the egg file format - simply puts " around names that contain spaces and prunes bad characters, replacing them with an underscore."""
-    s = s.replace('"', '_') # Sure there are more bad characters, but this will do for now.
+    s = s.replace('"', '_')  # Sure there are more bad characters, but this will do for now.
     if ' ' in s:
         return '"' + s + '"'
     else:
@@ -411,7 +413,7 @@ class EggObject:
             # poser sets/texture sets containing vertices id for vertices/tex_vertices arrays
             sets, tex_sets = geom.Sets(), geom.TexSets()
             # collect all geom data for current actor and present as egg group
-            group_name = egg_safe_same(actor.Name())
+            group_name = fix_name(actor.Name())
             group_polygons = []
             for polygon_index, polygon in enumerate(polygons):
                 poly_start = vertex_index
