@@ -281,44 +281,34 @@ class EggObject:
         print len(uvs)
         print sum
         print "Check on counts"
-        missed = 0
         poser.Scene().ProcessSomeEvents()
-        #for i in range(0, uniGeometry.NumVertices() ):         
-        #    try:
-        #       sets.index(i)
-        #    except:
-        #       missed+=1
-        #print "Lost vertices ", missed
-
-        
-        numVertices = uniGeometry.NumVertices() 
-        normals = uniGeometry.Normals() 
-        texVertices=uniGeometry.TexVertices()
-        percentComplete = 0 
+        numVertices = uniGeometry.NumVertices()
+        normals = uniGeometry.Normals()
+        percentComplete = 0
         print 'Writing vertices ...'
         lines = []
         lines += '  <VertexPool> mesh {\n'
-        self.unknown=[]
-        for i in range(0, numVertices): 
-            p = int((i / float(numVertices)) * 100) 
-            if not p == percentComplete: 
-               print '*', 
-               if p % 10 == 0: 
-                   print p, '%' 
-                   poser.Scene().ProcessSomeEvents()
-               percentComplete = p 
-            v = vertices[i] 
+        self.unknown = []
+        for i in range(0, numVertices):
+            p = int((i / float(numVertices)) * 100)
+            if not p == percentComplete:
+                print '*',
+                if p % 10 == 0:
+                    print p, '%'
+                    poser.Scene().ProcessSomeEvents()
+                percentComplete = p
+            v = vertices[i]
             n = normals[i]
             try:
-               kx=sets.index(i)
-               t=tex_vertices[tsets[kx]]
-               lines.append('    <Vertex> %s { %f %f %f <Normal> { %f %f %f } <UV> { %f %f } <RGBA> { 0 1 0 0.9} }\n' %
+                kx = sets.index(i)
+                t = tex_vertices[tsets[kx]]
+                lines.append('    <Vertex> %s { %f %f %f <Normal> { %f %f %f } <UV> { %f %f } <RGBA> { 0 1 0 0.9} }\n' %
                          (str(i), v.X(), v.Y(), v.Z(),
                           n.X() != 'nan' or 0, n.Y() != 'nan' or 0, n.Z() != 'nan' or 0,
                           t.U(), t.V()))
             except ValueError:
-	       self.unknown.append(i)
-               lines.append('    <Vertex> %s { %f %f %f <Normal> { %f %f %f } <RGBA> { 1 0 0 1} }\n' %
+                self.unknown.append(i)
+                lines.append('    <Vertex> %s { %f %f %f <Normal> { %f %f %f } <RGBA> { 1 0 0 1} }\n' %
                          (str(i), v.X(), v.Y(), v.Z(),
                           n.X() != 'nan' or 0, n.Y() != 'nan' or 0, n.Z() != 'nan' or 0))
 
@@ -341,28 +331,27 @@ class EggObject:
         return lines
 
     def write_polygons_exp(self):
-        uniGeometry,a,v=self.figure.UnimeshInfo()
-        polygons = uniGeometry.Polygons() 
-        numPolygons = uniGeometry.NumPolygons() 
-        sets = uniGeometry.Sets() 
+        uniGeometry, a, v = self.figure.UnimeshInfo()
+        polygons = uniGeometry.Polygons()
+        numPolygons = uniGeometry.NumPolygons()
+        sets = uniGeometry.Sets()
 
         lines = []
         print 'Writing Polygons ...'
-        percentComplete = 0 
-        for i in range(0, numPolygons): 
-          polygon = polygons[i] 
-          start = polygon.Start() 
-          refs = ' '.join([str(j) for j in sets[start : start + polygon.NumVertices()]]) 
-          polygon_trefs = ' '.join(
-               "<TRef> {%s}" % texture_name for texture_name in self.materials[polygon.MaterialName()].textures)	
-          #polygon_trefs=""
-          lines.append(
+        for i in range(0, numPolygons):
+            polygon = polygons[i]
+            start = polygon.Start()
+            refs = ' '.join([str(j) for j in sets[start: start + polygon.NumVertices()]])
+            polygon_trefs = ' '.join(
+               "<TRef> {%s}" % texture_name for texture_name in self.materials[polygon.MaterialName()].textures)
+            #polygon_trefs=""
+            lines.append(
                "  <Polygon> {\n    %s\n    \n    <VertexRef> { %s <Ref> { mesh } } \n}\n" % (
                   polygon_trefs, refs, ))
 
         lines.append(
              "  <Polygon> {\n    \n    <VertexRef> { %s <Ref> { mesh } } \n}\n" % (
-             ' '.join([str(x) for x in self.unknown]) ))
+             ' '.join([str(x) for x in self.unknown])))
         return lines
 
     def write_polygons(self):
