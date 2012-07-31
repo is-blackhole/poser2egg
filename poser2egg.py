@@ -176,7 +176,7 @@ class EggObject:
         origin = actor.Origin()
         parentOrigin = actor.Parent().Origin()
         if actor.Name() == self.figure.ParentActor().Name():
-            matrix = get_matrix(origin)
+            matrix = get_matrix(get_matrix([0, 0, 0]))
         else:
             matrix = get_matrix(vec_subtract(origin, parentOrigin))
         vertex_refs = []
