@@ -87,6 +87,7 @@ class TextureMode:
     NORMAL = 'NORMAL'
     GLOSS = 'GLOSS'
     HEIGHT = 'HEIGHT'
+    ALPHA = 'ALPHA'
 
 
 class EggMaterial:
@@ -95,8 +96,8 @@ class EggMaterial:
         self.name = egg_safe_same(poser_material.Name())
 
         textures = [self._check_texture(poser_material.TextureMapFileName(), '_texture', TextureMode.MODULATE),
-                   self._check_texture(poser_material.BumpMapFileName(), '_bump', TextureMode.NORMAL)]
-                   #self._check_texture(poser_material.TransparencyMapFileName(), '_transparency', TextureMode.MODULATE)
+                   self._check_texture(poser_material.BumpMapFileName(), '_bump', TextureMode.NORMAL),
+                   self._check_texture(poser_material.TransparencyMapFileName(), '_transparency', TextureMode.ALPHA)]
         self.textures = filter(None, textures)
 
     def _check_texture(self, textureName, egg_texture_name, egg_texture_mode):
@@ -139,8 +140,13 @@ class EggTexture:
 
     def write(self):
         lines = ["<Texture> %s {\n \"%s\" \n" % (self.name, self.filename)]
-        lines += "   <Scalar> envtype { %s }" % self.texture_mode
-        lines += "   <Scalar> wrap { %s }" % 'CLAMP'
+        # poser transparency textures are separate file and exported as pure alpha in egg
+        if self.texture_mode == TextureMode.ALPHA:
+            lines += "   <Scalar> format { alpha }\n"
+            lines += "   <Scalar> envtype { %s }" % TextureMode.MODULATE
+        else:
+            lines += "   <Scalar> envtype { %s }" % self.texture_mode
+        lines += "   <Scalar> wrap { %s }" % 'REPEAT'
         lines += "\n}\n"
         return lines
 
@@ -176,7 +182,7 @@ class EggObject:
         origin = actor.Origin()
         parentOrigin = actor.Parent().Origin()
         if actor.Name() == self.figure.ParentActor().Name():
-            matrix = get_matrix(get_matrix([0, 0, 0]))
+            matrix = get_matrix([0, 0, 0])
         else:
             matrix = get_matrix(vec_subtract(origin, parentOrigin))
         vertex_refs = []
