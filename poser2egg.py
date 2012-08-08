@@ -50,6 +50,10 @@ def vec_subtract(v1, v2):
     return v1[0] - v2[0], v1[1] - v2[1], v1[2] - v2[2]
 
 
+def vec_add(v1, v2):
+    return v1[0] + v2[0], v1[1] + v2[1], v1[2] + v2[2]
+
+
 def get_matrix(t):
     return ((1, 0, 0, 0),
             (0, 1, 0, 0),
@@ -175,7 +179,7 @@ class EggObject:
         return self.write()
 
     def collect_joints(self, actor, level):
-        if not actor.IsBodyPart():
+        if not actor.IsBodyPart() or actor.Name() == 'BodyMorphs':
             return
         actorName = fix_name(actor.Name())
         print indent_string('processing %s' % actorName, level)
@@ -193,7 +197,7 @@ class EggObject:
             child_joint = self.collect_joints(child, level + 1)
             if child_joint is not None:
                 child_joints += child_joint
-        return [(actorName, matrix, child_joints, vertex_refs)]
+        return [(actorName, matrix, child_joints, vertex_refs, actor)]
 
     def get_actor_index(self, actor):
         for i, a in enumerate(self.uniActorList):
@@ -238,7 +242,7 @@ class EggObject:
 
     def write_joints(self, joint, indent=1):
         lines = []
-        for (joint_name, joint_matrix, child_joints, vertex_refs) in joint:
+        for (joint_name, joint_matrix, child_joints, vertex_refs, actor) in joint:
             #print joint_name
             lines += indent_string('  <Joint> %s {\n' % joint_name, indent)
             lines += write_transform(joint_matrix, indent + 1)
@@ -334,6 +338,72 @@ class EggObject:
 
         lines += '  } // End VertexPool: mesh\n'
         print '* 100 %'
+        return lines
+
+    def write_animation(self):
+        print 'Writing animation ...'
+        lines = []
+        lines += '<Table> {\n'
+        lines += indent_string('<Bundle> %s {\n' % self.figure_name, 1)
+        lines += indent_string('<Table> "<skeleton>" {\n', 2)
+        lines += self.write_animation_table(self.joints, 3)
+        lines += indent_string('}\n', 2)
+        lines += indent_string('}\n', 1)
+        lines += '}'
+
+        return lines
+
+    def write_animation_table(self, joint, indent=1):
+        lines = []
+        params = ('xrot', 'yrot', 'zrot', 'xOffset', 'yOffset', 'zOffset')
+        for (joint_name, joint_matrix, child_joints, vertex_refs, actor) in joint:
+            #print joint_name
+            lines += indent_string('<Table> %s {\n' % joint_name, indent)
+            lines += indent_string('<Xfm$Anim> xform {\n', indent + 1)
+            lines += indent_string('<Scalar> order { srpht }\n', indent + 2)
+            lines += indent_string('<Scalar> contents { xyz }\n', indent + 2)
+            #lines += indent_string('<Scalar> contents { ijkprhxyz }\n', indent + 2)
+            lines += indent_string('<Scalar> fps { %u }\n' % 10, indent + 2)
+            lines += indent_string('<V> {\n', indent + 2)
+            for frame in xrange(0, poser.Scene().NumFrames() - 1):
+                poser.Scene().SetFrame(frame)
+                poser.Scene().DrawAll()
+                frame_params = {}
+                params=[]
+                for pname in params:
+                    param = actor.Parameter(pname)
+                    if param is not None:
+                        frame_params[pname] = param.Value()
+                        frame_params['org'] = actor.Origin()
+                    else:
+                        print "!!!", actor.Name(), pname
+
+                mat = actor.LocalDisplacement()
+                origin = actor.Origin()
+                parentOrigin = actor.Parent().Origin()
+                if actor.Name() == self.figure.ParentActor().Name():
+                    parentOrigin = [0, 0, 0]
+                mat = vec_add(vec_subtract(origin, parentOrigin), mat)
+                #lines += indent_string("%s %s %s %s %s %s %s %s %s\n" %
+                lines += indent_string("%s %s %s\n" %
+                        (  # 1.0, 1.0, 1.0,
+                        #0.0, 0.0, 0.0,
+                        #frame_params['xrot'], frame_params['zrot'], frame_params['yrot'],
+                        mat[0], mat[1], mat[2]
+                        #0.0, 0.0, 0.0,
+                        #mat[3][0], mat[3][1], mat[3][2]
+                        #frame_params['xrot'], frame_params['zrot'], 0.0, 0.0, 0.0, 0.0
+                        #frame_params['xOffset'], frame_params['yOffset'], frame_params['zOffset']
+                        ),
+                    indent + 3)
+                #anim_params.append(frame_params)
+                #lines += " ".join([k + str(v) for k, v in frame_params.items()])
+
+            lines += indent_string('}\n', indent + 2)
+            lines += indent_string('}\n', indent + 1)
+            lines += self.write_animation_table(child_joints, indent + 2)
+            lines += indent_string('} // End table %s \n' % joint_name, indent)
+
         return lines
 
     def write_polygons_exp(self):
@@ -467,6 +537,12 @@ class Poser2Egg():
                 output = open(fileName, 'w')
                 output.write("".join(lines))
                 output.close()
+                # write anim
+                lines = egg_obj.write_animation()
+                #print lines
+                output = open(os.path.join(os.path.dirname(fileName), "a.egg"), 'w')
+                output.write("".join(lines))
+                output.close()
             except IOError, (errno, strerror):
                 print 'failed to open file', fileName, 'for writing'
                 print "I/O error(%s): %s" % (errno, strerror)
@@ -476,19 +552,6 @@ class Poser2Egg():
                 self.restore_ik_chains(figure, ikStatusList)
             if Poser2Egg.RECOMPUTE_NORMALS:
                 self.recompute_egg_normals(fileName)
-
-    def optimize_egg(self, fileName):
-        print 'processing egg file with panda binaries...'
-        os.chdir(OUTPUT_PATH)
-        cmdln = 'echo Optimizing egg character ... && ' +\
-                'egg-optchar "' + fileName + '" -inplace -keepall -TS 12 && ' +\
-                'echo ""&& ' +\
-                'echo Converting to bam file ... && ' +\
-                'egg2bam "' + fileName + '" -o "' + fileName + '.bam" && ' +\
-                'echo Opening pview ... && ' +\
-                'start pview "' + fileName + '.bam" -c -l'
-        if os.system(cmdln) == 1:
-            print "Error while processing egg file!"
 
     def recompute_egg_normals(self, fileName):
         print "Recompute vertex normals"
