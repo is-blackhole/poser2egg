@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import string
+import string, math
 
 
 # some code from chicken exporter
@@ -39,6 +39,10 @@ def get_matrix(t):
             (0, 1, 0, 0),
             (0, 0, 1, 0),
             (t[0], t[1], t[2], 1))
+
+def radians_to_degrees(rads):
+    return (rads[0] * 180 / math.pi, rads[1] * 180 / math.pi, rads[2] * 180 / math.pi)
+    
 
 ############################################################
 # Egg Writing Functions
